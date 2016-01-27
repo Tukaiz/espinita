@@ -132,9 +132,28 @@ module Espinita
     end
 
     def audited_hash
-      Hash[ audited_attributes.map{|o| [o.to_sym, self.changes[o.to_sym] ] } ]
+      Hash[
+        audited_attributes.map do |o|
+          if self.send(o.to_sym).is_a?(Hash)
+            [o.to_sym, serialized_column_changes(o.to_sym)]
+          else
+            [o.to_sym, self.changes[o.to_sym] ]
+          end
+        end
+      ]
     end
 
+    def serialized_column_changes(column)
+      hash = {}
+
+      self.send(column).keys.each do |o|
+        unless self.send("#{column}_was")[o] === self.send(column)[o]
+          hash[o.to_sym] = [self.send("#{column}_was")[o], self.send(column)[o] ]
+        end
+      end
+
+      hash
+    end
 
     def audit_create
       #puts self.class.audit_callbacks
