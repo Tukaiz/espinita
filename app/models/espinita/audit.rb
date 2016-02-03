@@ -24,6 +24,12 @@ module Espinita
         auditable_id, auditable_type, version])
     end
 
+    # Return all audits newer than current one (used for rollback)
+    def descendants
+      self.class.where(['auditable_id = ? and auditable_type = ? and version >= ?',
+        auditable_id, auditable_type, version])
+    end
+
   private
     def set_version_number
       max = self.class.auditable_finder(auditable_id, auditable_type).maximum(:version) || 0
