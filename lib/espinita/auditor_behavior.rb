@@ -173,8 +173,8 @@ module Espinita
       hash = {}
 
       self.send(column).keys.each do |o|
-        unless self.send("#{column}_was")[o] === self.send(column)[o]
-          hash[o.to_sym] = [self.send("#{column}_was")[o], self.send(column)[o] ]
+        unless self.send("#{column}_was").try(:[], o) === self.send(column)[o]
+          hash[o.to_sym] = [self.send("#{column}_was").try(:[], o), self.send(column)[o] ]
         end
       end
 
