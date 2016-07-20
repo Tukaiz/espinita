@@ -120,10 +120,36 @@ module Espinita
       audit = self.audits.find(id_or_record)
 
       audit.ancestors.each do |ancestor|
-        self.assign_attributes Hash[ancestor.audited_changes.map{ |k,v| [k,v[0]] }]
+        assign_audit_attributes(ancestor)
       end
 
       self.save
+    end
+
+    def rollback_to_audit(id_or_record)
+      audit = self.audits.find(id_or_record)
+
+      audit.descendants.descending.each do |descendant|
+        assign_audit_attributes(descendant)
+      end
+
+      self.save
+    end
+
+    def assign_audit_attributes(audit)
+      audit.audited_changes.each do |k,v|
+        if v.is_a?(Hash)
+          serialized_column_rollback(k, v)
+        else
+          self.send("#{k}=", v[0])
+        end
+      end
+    end
+
+    def serialized_column_rollback(serialized_column, serialized_hash)
+      serialized_hash.each do |k,v|
+        self.send(serialized_column)[k.to_s] = v[0]
+      end
     end
 
     # audited attributes detected against permitted columns
@@ -132,9 +158,28 @@ module Espinita
     end
 
     def audited_hash
-      Hash[ audited_attributes.map{|o| [o.to_sym, self.changes[o.to_sym] ] } ]
+      Hash[
+        audited_attributes.map do |o|
+          if self.send(o.to_sym).is_a?(Hash)
+            [o.to_sym, serialized_column_changes(o.to_sym)]
+          else
+            [o.to_sym, self.changes[o.to_sym] ]
+          end
+        end
+      ]
     end
 
+    def serialized_column_changes(column)
+      hash = {}
+
+      self.send(column).keys.each do |o|
+        unless self.send("#{column}_was").try(:[], o) === self.send(column)[o]
+          hash[o.to_sym] = [self.send("#{column}_was").try(:[], o), self.send(column)[o] ]
+        end
+      end
+
+      hash
+    end
 
     def audit_create
       #puts self.class.audit_callbacks

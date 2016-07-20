@@ -4,7 +4,7 @@ module Espinita
     belongs_to :user, polymorphic: true
 
 
-    scope :descending,    ->{ reorder("version DESC")}
+    scope :descending,    ->{ reorder(version: :desc)}
     scope :creates,       ->{ where({:action => 'create'})}
     scope :updates,       ->{ where({:action => 'update'})}
     scope :destroys,      ->{ where({:action => 'destroy'})}
@@ -20,8 +20,14 @@ module Espinita
 
     # Return all audits older than the current one.
     def ancestors
-      self.class.where(['auditable_id = ? and auditable_type = ? and version <= ?',
-        auditable_id, auditable_type, version])
+      table = self.class.arel_table
+      self.class.where(table[:auditable_id].eq(auditable_id).and(table[:auditable_type].eq(auditable_type)).and(table[:version].lteq(version)))
+    end
+
+    # Return all audits newer than current one (used for rollback)
+    def descendants
+      table = self.class.arel_table
+      self.class.where(table[:auditable_id].eq(auditable_id).and(table[:auditable_type].eq(auditable_type)).and(table[:version].gteq(version)))
     end
 
   private
