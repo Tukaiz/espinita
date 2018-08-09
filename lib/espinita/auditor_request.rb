@@ -1,8 +1,14 @@
 module Espinita::AuditorRequest 
   extend ActiveSupport::Concern
 
-  included do 
-    before_filter :store_audited_user
+  if Rails.version.split('.')[0].to_i < 5
+    included do
+      before_filter :store_audited_user
+    end
+  else
+    included do
+      before_action :store_audited_user
+    end
   end
 
   def store_audited_user
